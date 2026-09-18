@@ -4,13 +4,13 @@ Target Platform: macOS 15 Sequoia via OpenCore Legacy Patcher (OCLP)
 Target Hardware: MacBook Pro 13" Retina (Late 2012 / Early 2013 - MacBookPro10,2)  
 Specifications: Intel Core i5-3210M (Ivy Bridge 2C/4T @ 2.5-3.1 GHz), 8 GB DDR3L RAM, Intel HD Graphics 4000, 2560x1600 Retina Display  
 
+![MacBoost Terminal Diagnostics](screenshot.png)
+
 ---
 
-## Disclaimer and Liability
+## Disclaimer
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-EXECUTION OF THIS SCRIPT MODIFIES SYSTEM-LEVEL DAEMONS, KERNEL PARAMETERS, POWER SETTINGS, AND SECURITY SUBSYSTEMS. IT IS PROVIDED WITHOUT ANY GUARANTEE OF STABILITY AND MUST BE USED ENTIRELY AT YOUR OWN RISK.
+This software is provided "AS IS", without warranty of any kind. Modifying system daemons, kernel tunables, power management settings, and security layers carries inherent risks. The author assumes no liability for data loss, system instability, or unintended behavior. Use entirely at your own risk.
 
 ---
 
@@ -20,7 +20,7 @@ This project is directly inspired by and builds upon the research, testing, and 
 
 * Reference Resource: [TeckFire's Configuration & Scripts (Pastebin)](https://pastebin.com/UY2012cH)
 
-While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB of RAM, dedicated Nvidia graphics, and active continuous background polling scripts, **MacBoost** refactors those concepts specifically for the 13" dual-core Core i5 model. Key architectural adaptations include:
+While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB of RAM, dedicated NVIDIA GPU, and active continuous background polling scripts, **MacBoost** refactors those concepts specifically for the 13" dual-core Core i5 model. Key architectural adaptations include:
 * Eliminating continuous polling loops in favor of a zero-overhead one-shot boot injector.
 * Sizing network and virtual memory structures strictly for an 8 GB RAM constraint.
 * Implementing granular runtime sysctl validation with logging.

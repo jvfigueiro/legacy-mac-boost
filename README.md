@@ -76,10 +76,11 @@ Rather than piping all parameters blindly into `sysctl -f` (which silences failu
 * Attempts write via `/usr/sbin/sysctl -w "$item"` and captures stdout/stderr.
 * Records individual `[OK]` or `[FAIL]` status to `/var/log/macboost_boot.log`.
 
-### 2. Balanced Power Management (Safe Sleep)
-* **hibernatemode 3:** Configures Safe Sleep instead of pure RAM sleep (mode 0). RAM remains energized for sub-second wake times when opening the lid. Simultaneously, an image is maintained in `/var/vm/sleepimage`. If the battery discharges completely during extended standby, the system restores from disk rather than losing state.
+### 2. Balanced Power Management & Strict Power Nap Elimination
+* **Strict Power Nap & DarkWake Elimination:** The script executes `pmset -a powernap 0`, `pmset -b powernap 0`, and `pmset -c powernap 0`, while purging all daemon-scheduled wake alarms via `pmset schedule cancelall`. Wake-on-LAN (`womp 0`) and proximity triggers (`proximitywake 0`) are disabled.
+* **Battery TCP Keepalive Policy:** On battery power (`pmset -b tcpkeepalive 0`), the network stack disables Bonjour Sleep Proxy periodic heartbeats and push-notification timers that traditionally wake the CPU every 30 to 60 minutes with the lid closed. When connected to AC power, keepalive is maintained (`pmset -c tcpkeepalive 1`).
+* **hibernatemode 3 (Safe Sleep):** Preserves fast sub-second wake times from energized RAM while maintaining an image at `/var/vm/sleepimage` to protect against data loss if the battery discharges completely during extended trips.
 * **standby and autopoweroff:** Restored with sensible delays (3 hours on battery below 50%, 6 hours on healthy battery, 8 hours for autopoweroff) to allow the SMC to transition into deep low-power states during prolonged inactivity.
-* **powernap 0:** Maintained to prevent DarkWake background polling cycles from draining battery or heating the chassis when the lid is closed.
 
 ### 3. Non-Invasive UI Policy
 * Native window blur and transparency remain enabled (`reduceTransparency -bool false`) to preserve visual aesthetics.
@@ -139,7 +140,7 @@ In your OpenCore `config.plist`, the following boot arguments may be utilized to
 ```xml
 <dict>
     <key>boot-args</key>
-    <string>keepsyms=1 debug=0x100 -lilubetaall ipc_control_port_options=0 -nokcmismatchpanic amfi=0x80 vm_compressor_mode=1 ncl=131072 amfi_get_out_of_my_way=1 kpti=0 alcid=1 spectre=0 mds=0 l1tf=0 mitigations=0 cwae=0 apple-panic-no-check=1 no_vhentropy=1 -no_auto_rebuild</string>
+    <string>keepsyms=1 debug=0x100 -lilubetaall ipc_control_port_options=0 -nokcmismatchpanic amfi=0x80 vm_compressor_mode=1 ncl=131072 amfi_get_out_of_my_way=1 kpti=0 alcid=1 spectre=0 mds=0 l1tf=0 mitigations=0 cwae=0 apple-panic-no-check=1 no_vhentropy=1 darkwake=0 -no_auto_rebuild</string>
     <key>csr-active-config</key>
     <data>fwg=</data>
 </dict>

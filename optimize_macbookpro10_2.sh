@@ -293,14 +293,33 @@ launchctl setenv DYLD_PRINT_WARNINGS 0
 echo -e "    ${GREEN}[OK] Native reduceMotion applied. Animation timings untouched.${NC}"
 
 # ==============================================================================
-#  STEP 5: Balanced Power Management (Safe Sleep + Standby)
+#  STEP 5: Power Management & Strict Power Nap Elimination
+#  Completely eliminates Power Nap and background DarkWake polling triggers
+#  so the laptop remains in deep, unperturbed sleep while the lid is closed.
 # ==============================================================================
-echo -e "${YELLOW}[5/6] Configuring balanced power management (Safe Sleep)...${NC}"
+echo -e "${YELLOW}[5/6] Configuring balanced power management and disabling Power Nap...${NC}"
 
 if [ -f /var/vm/sleepimage ]; then
     chflags nouchg /var/vm/sleepimage 2>/dev/null || true
 fi
 
+# Clear any pending wake events scheduled by system daemons
+pmset schedule cancelall 2>/dev/null || true
+
+# Strict Power Nap and wake suppression across AC and Battery profiles
+pmset -a powernap 0
+pmset -b powernap 0
+pmset -c powernap 0
+pmset -a womp 0
+pmset -a proximitywake 0
+pmset -a networkoversleep 0 2>/dev/null || true
+pmset -a ttyskeepawake 0 2>/dev/null || true
+
+# Battery profile: Disable TCP keepalive during sleep to stop Bonjour/push RTC wakes
+pmset -b tcpkeepalive 0 2>/dev/null || true
+pmset -c tcpkeepalive 1 2>/dev/null || true
+
+# Safe Sleep & Standby Timers
 pmset -a hibernatemode 3
 pmset -a standby 1
 pmset -a standbydelaylow 10800   # 3 hours before deep sleep on low battery
@@ -308,13 +327,9 @@ pmset -a standbydelayhigh 21600  # 6 hours before deep sleep on healthy battery
 pmset -a highstandbythreshold 50 # Standby delay selection threshold (50% battery)
 pmset -a autopoweroff 1
 pmset -a autopoweroffdelay 28800 # 8 hours before European Energy-related Products (ErP) shutoff
-pmset -a powernap 0
-pmset -a womp 0
-pmset -a proximitywake 0
 pmset -a lidwake 1
-pmset -a tcpkeepalive 1
 
-echo -e "    ${GREEN}[OK] Safe sleep (hibernatemode 3) and standby timers configured.${NC}"
+echo -e "    ${GREEN}[OK] Power Nap disabled and deep sleep wake-suppression configured.${NC}"
 
 # ==============================================================================
 #  STEP 6: Verified Boot Injector & Conservative Renice CLI

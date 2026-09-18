@@ -554,9 +554,6 @@ chmod +x /usr/local/bin/macboost
 chown root:wheel /usr/local/bin/macboost
 ln -sf /usr/local/bin/macboost /usr/local/bin/optimizemac
 
-# Update root optimize.sh
-cp -f "$0" "$(dirname "$0")/optimize.sh" 2>/dev/null || true
-
 # Execute initial boot validation now
 /usr/local/bin/macboost_boot.sh 2>/dev/null || true
 

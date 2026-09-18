@@ -41,9 +41,9 @@ echo -e "${GREEN}[+] Target Console User:${NC} $CONSOLE_USER (UID: $CONSOLE_UID)
 echo ""
 
 # ==============================================================================
-#  STEP 1: Remove LaunchDaemon and Helper Binaries
+#  STEP 1: Remove LaunchDaemon, Helper Binaries, and Clear Environment
 # ==============================================================================
-echo -e "${YELLOW}[1/5] Removing MacBoost persistence daemons and binaries...${NC}"
+echo -e "${YELLOW}[1/5] Removing MacBoost persistence daemons, binaries, and environment flags...${NC}"
 
 launchctl bootout system/com.legacy.macboost 2>/dev/null || true
 rm -f /Library/LaunchDaemons/com.legacy.macboost.plist
@@ -52,7 +52,15 @@ rm -f /usr/local/bin/macboost
 rm -f /usr/local/bin/optimizemac
 rm -f /var/log/macboost_boot.log
 
-echo -e "    ${GREEN}[OK] Daemons and CLI utilities removed.${NC}"
+# Unset launchd environment variables
+launchctl unsetenv MTL_HUD_ENABLED 2>/dev/null || true
+launchctl unsetenv MTL_COMPILER_LOG_LEVEL 2>/dev/null || true
+launchctl unsetenv DYLD_PRINT_WARNINGS 2>/dev/null || true
+
+# Restore default system logging
+/usr/bin/log config --mode "level:default" 2>/dev/null || true
+
+echo -e "    ${GREEN}[OK] Daemons, CLI utilities, and environment flags reset.${NC}"
 
 # ==============================================================================
 #  STEP 2: Re-enable Gatekeeper and System Security
@@ -75,47 +83,120 @@ echo -e "    ${GREEN}[OK] Spotlight indexing enabled.${NC}"
 
 # ==============================================================================
 #  STEP 4: Re-enable Core System and User Daemons
+#  Fully symmetric with all services unloaded in optimize.sh.
 # ==============================================================================
 echo -e "${YELLOW}[4/5] Restoring launchd services (System & GUI)...${NC}"
 
 RESTORE_SYSTEM_SERVICES=(
+    # Spotlight & Metadata
     "com.apple.metadata.mds"
+    "com.apple.metadata.mds.index"
+    "com.apple.metadata.mds.scan"
+    "com.apple.metadata.mds.spindump"
+    # CoreDuet & Context Intelligence
     "com.apple.coreduetd"
     "com.apple.duetexpertd"
     "com.apple.contextstored"
+    # Diagnostics, Telemetry & Crash Reporting
     "com.apple.analyticsd"
+    "com.apple.analyticsagent"
+    "com.apple.wifianalyticsd"
+    "com.apple.audioanalyticsd"
+    "com.apple.ecosystemanalyticsd"
+    "com.apple.geoanalyticsd"
     "com.apple.symptomsd"
+    "com.apple.symptomsd-diag"
+    "com.apple.ospredictiond"
+    "com.apple.biomed"
     "com.apple.ReportCrash.Root"
+    "com.apple.sysdiagnose.service"
     "com.apple.powerlogHelperd"
+    "com.apple.spindump"
+    "com.apple.tailspind"
     "com.apple.systemstatsd"
+    "com.apple.systemstats.daily"
+    "com.apple.systemstats.analysis"
+    "com.apple.systemstats.microstackshot_periodic"
+    "com.apple.osanalytics.osanalyticshelper"
+    # Apple Intelligence & Silicon Daemons
     "com.apple.triald.system"
+    "com.apple.aned"
+    "com.apple.aneuserd"
+    # Cloud & Peripheral Daemons
     "com.apple.icloud.searchpartyd"
+    "com.apple.CSCSupportd"
+    "com.apple.nfcd"
+    "com.apple.oahd"
+    "com.apple.mdmclient.daemon.runatboot"
+    "com.apple.biometrickitd"
+    "com.apple.remotemanagementd"
 )
 
 RESTORE_GUI_SERVICES=(
-    "com.apple.spotlightknowledged"
+    # CoreDuet / Proactive Intelligence User Agents
     "com.apple.duetexpertd"
     "com.apple.coreduetd"
     "com.apple.ContextStoreAgent"
+    # Spotlight GUI Knowledge Agents
+    "com.apple.spotlightknowledged"
+    "com.apple.spotlightknowledged.importer"
+    "com.apple.spotlightknowledged.updater"
+    # Cloud & Sync Daemons
     "com.apple.bird"
     "com.apple.cloudd"
     "com.apple.itunescloudd"
+    "com.apple.icloud.searchpartyuseragent"
+    "com.apple.wallpaper.clouddestination"
     "com.apple.akd"
     "com.apple.amsaccountsd"
+    "com.apple.amsengagementd"
+    # Secondary Display & Peripheral Integration
     "com.apple.sidecardisplayagent"
     "com.apple.sidecarrelay"
     "com.apple.universalcontrol"
-    "com.apple.continuity"
     "com.apple.AirPlayXPCHelper"
+    # Apple Intelligence, Siri & Knowledge Agents
     "com.apple.intelligenceplatformd"
+    "com.apple.intelligencecontextd"
     "com.apple.triald"
+    "com.apple.triald.system"
     "com.apple.suggestd"
     "com.apple.siriknowledged"
+    "com.apple.siriinferenced"
     "com.apple.corespeechd"
     "com.apple.assistantd"
+    "com.apple.knowledge-agent"
+    "com.apple.knowledgeconstructiond"
+    "com.apple.proactived"
+    "com.apple.proactiveeventtrackerd"
+    # Media & Photo Background Analysis
     "com.apple.mediaanalysisd"
     "com.apple.photoanalysisd"
+    "com.apple.medialibraryd"
+    # Telemetry, Biome & Crash Reporters
+    "com.apple.analyticsagent"
+    "com.apple.geoanalyticsd"
+    "com.apple.inputanalyticsd"
+    "com.apple.biomesyncd"
+    "com.apple.biomesyncd.plist"
+    "com.apple.BiomeAgent"
+    "com.apple.biomeAgent.plist"
     "com.apple.ReportCrash"
+    "com.apple.tailspind"
+    "com.apple.symptomd"
+    "com.apple.usage-tracking-agent"
+    "com.apple.diagnosed"
+    "com.apple.appleseed.fbahelperd"
+    "com.apple.appleseed.spindump"
+    "com.apple.appleseed.seedusaged.postinstall"
+    "com.apple.appleseed.biomesyncd"
+    # Miscellaneous services
+    "com.apple.gamed"
+    "com.apple.helpd"
+    "com.apple.touchbarserver"
+    "com.apple.screentimeagent"
+    "com.apple.widgets.extension-vending"
+    "com.apple.FolderActionsDispatcher"
 )
 
 for s_svc in "${RESTORE_SYSTEM_SERVICES[@]}"; do
@@ -126,19 +207,27 @@ for g_svc in "${RESTORE_GUI_SERVICES[@]}"; do
     launchctl enable gui/"$CONSOLE_UID"/"$g_svc" 2>/dev/null || true
 done
 
-echo -e "    ${GREEN}[OK] Services re-enabled in launchd configuration.${NC}"
+echo -e "    ${GREEN}[OK] All services re-enabled in launchd configuration.${NC}"
 
 # ==============================================================================
 #  STEP 5: Restore Default Power Management Settings
 # ==============================================================================
 echo -e "${YELLOW}[5/5] Restoring default macOS power management configuration...${NC}"
 
+# Restore standard Apple powernap and tcpkeepalive defaults
 pmset -a hibernatemode 3
 pmset -a standby 1
 pmset -a autopoweroff 1
 pmset -a powernap 1
+pmset -b powernap 1
+pmset -c powernap 1
+pmset -a tcpkeepalive 1
+pmset -b tcpkeepalive 1
+pmset -c tcpkeepalive 1
 pmset -a womp 1
 pmset -a proximitywake 1
+pmset -a networkoversleep 1 2>/dev/null || true
+pmset -a ttyskeepawake 1 2>/dev/null || true
 
 # Re-enable Handoff preferences
 sudo -u "$CONSOLE_USER" defaults -currentHost delete com.apple.coreservices.useractivityd ActivityAdvertisingAllowed 2>/dev/null || true
@@ -146,7 +235,7 @@ sudo -u "$CONSOLE_USER" defaults -currentHost delete com.apple.coreservices.user
 sudo -u "$CONSOLE_USER" defaults delete com.apple.CloudDocs enabled 2>/dev/null || true
 sudo -u "$CONSOLE_USER" defaults write com.apple.universalaccess reduceMotion -bool false
 
-echo -e "    ${GREEN}[OK] Power management and UI motion preferences restored.${NC}"
+echo -e "    ${GREEN}[OK] Power management (Power Nap, TCP keepalive) and UI motion restored.${NC}"
 
 echo ""
 echo -e "${GREEN}${BOLD}=========================================================================="
@@ -156,4 +245,3 @@ echo ""
 echo "Please reboot your MacBook Pro to reload all default system services:"
 echo "sudo reboot"
 echo ""
-

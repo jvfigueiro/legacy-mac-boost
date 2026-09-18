@@ -26,7 +26,7 @@ end
 function boost
     set -l pid $fish_pid
     sudo renice -n -15 -p $pid
-    echo (set_color green)"🚀 Fish Shell (PID: $pid) elevated to priority -15"(set_color normal)
+    echo (set_color green)"[OK] Fish Shell (PID: $pid) elevated to priority -15"(set_color normal)
 end
 
 # 4. MacBoost CLI Integration
@@ -40,11 +40,11 @@ end
 
 # 5. Energy and Thermal Pressure Inspector
 function energy-hogs
-    echo (set_color -o red)"--- ⚡ Highest CPU Consumers ---"(set_color normal)
+    echo (set_color -o red)"--- Highest CPU Consumers ---"(set_color normal)
     top -l 1 -n 12 -o cpu -stats pid,command,cpu,state | sed -n '/PID/,$p' | awk '$3 > 0.0 || $2 == "COMMAND"'
     
     echo ""
-    echo (set_color cyan)"--- 🌡️ Thermal State & Memory ---"(set_color normal)
+    echo (set_color cyan)"--- Thermal State & Memory ---"(set_color normal)
     
     set -l therm_speed (pmset -g therm | grep "CPU_Speed_Limit" | awk '{print $NF}')
     if test -n "$therm_speed"
@@ -61,6 +61,6 @@ end
 
 # 6. Intel Ivy Bridge C-State Residency Diagnostics
 function macboost-cstates
-    echo (set_color cyan)"--- 🧠 C-State Residency Snapshot (Intel Ivy Bridge) ---"(set_color normal)
+    echo (set_color cyan)"--- C-State Residency Snapshot (Intel Ivy Bridge) ---"(set_color normal)
     sudo powermetrics -n 1 -i 1000 -s cpu_power | grep -E "C-state|Residency|package"
 end

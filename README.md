@@ -25,6 +25,7 @@ While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB
 * Sizing network and virtual memory structures strictly for an 8 GB RAM constraint.
 * Implementing granular runtime sysctl validation with logging.
 * Using conservative scheduler renice values (-10 / -5) to prevent thread starvation on a 2C/4T CPU.
+* Preserving AirDrop functionality while unloading heavy background cloud and AI tasks.
 
 ---
 
@@ -32,17 +33,16 @@ While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB
 
 MacBoost is designed specifically for **controlled, secure networking environments**. It is tailored for machines functioning primarily as thin clients, remote administration workstations (RDP, SSH, AnyDesk), and light browsing terminals where all internet traffic is routed through a monitored, pre-filtered private VPN (such as Tailscale or an internal WireGuard/IPsec gateway).
 
-It is **not** recommended for general-purpose, casual consumer use on untrusted public Wi-Fi networks without an upstream filtering layer, due to the disabled security features described below.
-
 ---
 
 ## Explicit Operational Risks and Disabled Features
 
-Executing this script disables numerous native macOS subsystems to conserve CPU cycles and RAM. You must be aware of the following consequences before running it:
+Executing this script selectively disables native macOS subsystems to conserve CPU cycles and RAM. You must be aware of the following behaviors:
 
-### 1. Gatekeeper and Binary Quarantine are Disabled
-* The script executes `spctl --master-disable` and sets `LSQuarantine` to `false`.
-* **Consequence:** macOS will no longer perform online notarization verification, certificate trust checks, or display the standard "Downloaded from the Internet" quarantine prompt when opening new executables. Malicious binaries will run without OS-level Gatekeeper interception.
+### 1. Gatekeeper Configuration (User Choice)
+* When executing `optimize.sh`, the script prompts whether to keep or disable Gatekeeper (`spctl` and `LSQuarantine`). You can also pass `--disable-gatekeeper` or `--keep-gatekeeper`.
+* **If disabled:** macOS bypasses quarantine attribute verification and online notarization checks, accelerating application launches in trusted VPN environments. Malicious binaries will run without OS-level Gatekeeper interception.
+* **If kept enabled:** Default macOS Gatekeeper and quarantine enforcement remain intact.
 
 ### 2. Spotlight and Metadata Indexing are Permanently Disabled
 * All indexing is disabled across all mounted volumes via `mdutil -a -i off` and `mdutil -a -d`.
@@ -53,9 +53,9 @@ Executing this script disables numerous native macOS subsystems to conserve CPU 
 * **Consequence:** iCloud Drive file synchronization, desktop/documents sync, iCloud Photos, and CloudKit-dependent application sync will cease to function.
 * **Important IPC Note:** If an Apple ID remains logged in under System Settings with iCloud Drive toggled on, client applications (such as file open/save dialogs in Finder) may continue attempting Mach message lookups, receiving `XPC_ERROR_CONNECTION_INVALID`. To achieve zero residual IPC calls, manually uncheck iCloud Drive in System Settings > Apple ID.
 
-### 4. Apple Continuity and Device Integration are Disabled
-* Daemons for AirDrop, Handoff, Universal Control, and Sidecar (`com.apple.sharingd`, `com.apple.rapportd`, `com.apple.sidecardisplayagent`, etc.) are unloaded.
-* **Consequence:** You will not be able to send or receive AirDrop files, share clipboards across devices, use an iPad as an external display, or utilize Universal Control.
+### 4. Continuity & Peripheral Integration vs. AirDrop Preservation
+* **AirDrop is PRESERVED:** Daemons responsible for local peer-to-peer Wi-Fi sharing (`sharingd` and `rapportd`) remain active and functional.
+* **Disabled Features:** Secondary integration services including Sidecar (`com.apple.sidecardisplayagent`, `com.apple.sidecarrelay`) and Universal Control (`com.apple.universalcontrol`) are unloaded to prevent GPU and CPU wakeups on unsupported hardware.
 
 ### 5. Siri, Apple Intelligence, and Proactive Daemons are Disabled
 * Daemons including `intelligenceplatformd`, `triald`, `suggestd`, `siriknowledged`, `duetexpertd`, `coreduetd`, and `contextstored` are unloaded.
@@ -81,8 +81,9 @@ Rather than piping all parameters blindly into `sysctl -f` (which silences failu
 * **standby and autopoweroff:** Restored with sensible delays (3 hours on battery below 50%, 6 hours on healthy battery, 8 hours for autopoweroff) to allow the SMC to transition into deep low-power states during prolonged inactivity.
 * **powernap 0:** Maintained to prevent DarkWake background polling cycles from draining battery or heating the chassis when the lid is closed.
 
-### 3. Preserved UI Transparency
-Native macOS window blur and vibrancy remain enabled (`reduceTransparency -bool false`) to preserve visual fidelity. Responsiveness gains are achieved by accelerating window resize intervals and disabling artificial Dock animation delays, rather than degrading interface aesthetics.
+### 3. Non-Invasive UI Policy
+* Native window blur and transparency remain enabled (`reduceTransparency -bool false`) to preserve visual aesthetics.
+* Window and Dock animation timings are left untouched; only the native accessibility `reduceMotion` toggle is applied (`defaults write com.apple.universalaccess reduceMotion -bool true`).
 
 ### 4. Conservative Mach Scheduler Priorities
 The `macboost` utility applies conservative nice values:
@@ -95,20 +96,20 @@ MacBoost does not run persistent background polling daemons. Its LaunchDaemon (`
 
 ---
 
-## Installation and Usage
+## Installation, Usage, and Uninstallation
 
 ### Applying the Configuration
 
-1. Clone or download this repository.
-2. Grant execution permissions:
+1. Grant execution permissions:
    ```bash
    chmod +x optimize.sh
    ```
-3. Run the installer as root:
+2. Run the installer as root:
    ```bash
    sudo ./optimize.sh
    ```
-4. **Reboot the machine** to ensure all disabled services are completely cleared from memory and to allow the LaunchDaemon to perform initial boot-time kernel injection.
+   *(Optionally, use `sudo ./optimize.sh --disable-gatekeeper` or `sudo ./optimize.sh --keep-gatekeeper` to run non-interactively).*
+3. **Reboot the machine** to ensure all disabled services are cleared from memory and to allow the LaunchDaemon to perform initial boot-time kernel injection.
 
 ### CLI Management: `macboost`
 
@@ -118,6 +119,16 @@ A unified command-line tool is installed at `/usr/local/bin/macboost` (aliased t
 * **`macboost boost`**: Re-applies scheduler priorities (-10 / -5) on demand.
 * **`macboost status`**: Displays system 1-minute load average, CPU thermal throttling status, direct free memory, and top active processes.
 * **`macboost log`**: Displays the exact per-line sysctl validation log recorded by the boot injector (`/var/log/macboost_boot.log`).
+
+### Reverting Changes: `uninstall.sh`
+
+To completely remove MacBoost and restore standard macOS system settings:
+
+1. Run the uninstaller as root:
+   ```bash
+   sudo ./uninstall.sh
+   ```
+2. **Reboot the machine** to reinitialize all restored daemons and power settings.
 
 ---
 

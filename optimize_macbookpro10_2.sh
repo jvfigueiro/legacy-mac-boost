@@ -1,30 +1,18 @@
 #!/bin/bash
 # ==============================================================================
-#  MacBoost - macOS 15 Sequoia (OCLP) Engineering Refactor
+#  MacBoost - macOS 15 Sequoia (OCLP) Balanced Optimization Suite
 #  Target  : MacBook Pro 13" Retina (MacBookPro10,2 - Late 2012 / Early 2013)
 #  Hardware: Intel Core i5-3210M (2C/4T @ 2.5-3.1GHz) | Intel HD Graphics 4000
 #            8 GB DDR3L RAM | 2560x1600 Retina Display | SATA SSD
 #
-#  ENGINEERING SPECIFICATIONS & AUDITED MECHANICS:
-#  1. Granular Sysctl Validation:
-#     - Iterates over every OID, checking existence in kernel MIB before applying.
-#     - Records per-line [OK], [SKIP], or [FAIL] in /var/log/macboost_boot.log.
-#     - Uses native ZSH/Bash glob matching [[ "$item" == \#* ]] to prevent
-#       regex condition parser faults on non-interactive shells.
-#  2. Balanced Power Management:
-#     - hibernatemode 3 (Safe Sleep): Instant wake from RAM with disk image safety.
-#     - standby (3h/6h) & autopoweroff (8h) restored to allow deep low-power sleep.
-#     - sleepimage unlocked; powernap 0 maintained to avert DarkWake polling.
-#  3. Account Dependencies & Residual XPC Mechanics:
-#     - Disables Handoff useractivityd advertising.
-#     - Disables local CloudDocs preferences where possible.
-#     - Disables CoreDuet / duetexpertd proactive background intelligence.
-#  4. Sanitized Architecture:
-#     - Zero unverified UIDs (UID 16908544 eliminated).
-#     - Legacy namespace leftovers (thinclient, sleeper, sentinel) cleaned up.
-#  5. Conservative Scheduler Renice (-10 / -5):
-#     - Restricting work apps to nice -10 and -5 avoids saturating 2C/4T runqueues,
-#       preventing thread starvation without assuming a fixed BSD nice on compositors.
+#  DESIGN DIRECTIVES:
+#  1. Configurable Gatekeeper: Prompts or accepts CLI flags to keep or disable.
+#  2. Native UI Fidelity: Does not alter window or Dock animation timings;
+#     only applies native reduceMotion option.
+#  3. AirDrop Preserved: sharingd and rapportd remain active for local sharing.
+#  4. Purgable Daemons: Silences Spotlight, telemetry, Siri/AI, media analysis,
+#     crash reporting, and background Apple ID cloud synchronization.
+#  5. Zero Emojis: Minimalist, clean, and reliable ASCII output.
 # ==============================================================================
 
 set -e
@@ -34,13 +22,12 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-echo -e "${CYAN}${BOLD}"
+echo -e "${BLUE}${BOLD}"
 echo "=========================================================================="
-echo "    MacBoost — Performance & Power Refactor (MacBookPro10,2)              "
+echo "    MacBoost — Balanced Performance Optimization (MacBookPro10,2)        "
 echo "    Target: i5-3210M (2C/4T) | HD 4000 | 8GB RAM | macOS 15 Sequoia (OCLP)"
 echo "=========================================================================="
 echo -e "${NC}"
@@ -61,14 +48,45 @@ if [ -z "$USER_HOME" ]; then
     USER_HOME="/Users/$CONSOLE_USER"
 fi
 
-echo -e "${GREEN}[✓] Target Console User:${NC} $CONSOLE_USER (UID: $CONSOLE_UID)"
-echo -e "${GREEN}[✓] Home Directory:${NC} $USER_HOME"
+echo -e "${GREEN}[+] Target Console User:${NC} $CONSOLE_USER (UID: $CONSOLE_UID)"
+echo -e "${GREEN}[+] Home Directory:${NC} $USER_HOME"
 echo ""
+
+# 3. Interactive or Flag-Based Gatekeeper Option
+DISABLE_GATEKEEPER=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --disable-gatekeeper)
+            DISABLE_GATEKEEPER=true
+            ;;
+        --keep-gatekeeper)
+            DISABLE_GATEKEEPER=false
+            ;;
+    esac
+done
+
+if [ "$DISABLE_GATEKEEPER" = false ] && [ "$1" != "--keep-gatekeeper" ]; then
+    if [ -t 0 ]; then
+        echo -e "${YELLOW}[?] Security Policy Configuration:${NC}"
+        echo "    Disabling Gatekeeper bypasses quarantine checks for faster app launch"
+        echo "    in pre-filtered VPN environments, but removes OS-level notarization checks."
+        read -r -p "    Do you want to disable Gatekeeper? [y/N]: " GK_INPUT
+        case "$GK_INPUT" in
+            [yY][eE][sS]|[yY])
+                DISABLE_GATEKEEPER=true
+                ;;
+            *)
+                DISABLE_GATEKEEPER=false
+                ;;
+        esac
+    fi
+fi
 
 # ==============================================================================
 #  STEP 1: Purge Legacy Iteration Leftovers
 # ==============================================================================
-echo -e "${YELLOW}${BOLD}[1/6] Cleaning legacy services and outdated helper artifacts...${NC}"
+echo -e "${YELLOW}[1/6] Cleaning legacy services and outdated helper artifacts...${NC}"
 
 LEGACY_DAEMONS=(
     "com.legacy.thinclient"
@@ -82,14 +100,14 @@ for l_daemon in "${LEGACY_DAEMONS[@]}"; do
 done
 
 rm -f /usr/local/bin/thinclient* /usr/local/bin/silent_sentinel.sh /usr/local/bin/sleeper* 2>/dev/null || true
-echo -e "    ${GREEN}✓ Legacy artifacts removed.${NC}"
+echo -e "    ${GREEN}[OK] Legacy artifacts removed.${NC}"
 
 # ==============================================================================
-#  STEP 2: Account Dependencies & Residual XPC Analysis
+#  STEP 2: Account Dependencies & Residual XPC Isolation
 # ==============================================================================
-echo -e "${YELLOW}${BOLD}[2/6] Inspecting account dependencies and configuring IPC isolation...${NC}"
+echo -e "${YELLOW}[2/6] Inspecting account dependencies and configuring IPC isolation...${NC}"
 
-# Disable Handoff / Continuity advertising
+# Disable Handoff / Continuity advertising while preserving AirDrop
 sudo -u "$CONSOLE_USER" defaults -currentHost write com.apple.coreservices.useractivityd ActivityAdvertisingAllowed -bool false
 sudo -u "$CONSOLE_USER" defaults -currentHost write com.apple.coreservices.useractivityd ActivityReceivingAllowed -bool false
 
@@ -110,15 +128,16 @@ if [ "$HAS_ICLOUD" = true ]; then
     echo -e "           Handoff advertising is disabled. However, if iCloud Drive is toggled ON"
     echo -e "           in System Settings, apps opening file dialogs will issue residual XPC calls"
     echo -e "           to cloudd/bird and receive XPC_ERROR_CONNECTION_INVALID."
-    echo -e "           ${BOLD}Recommendation:${NC} Uncheck iCloud Drive in System Settings for zero residual calls."
+    echo -e "           Recommendation: Uncheck iCloud Drive in System Settings for zero residual calls."
 else
-    echo -e "    ${GREEN}✓ No active Apple ID detected. Cloud sync agents can be safely disabled.${NC}"
+    echo -e "    ${GREEN}[OK] No active Apple ID detected. Cloud sync agents can be safely disabled.${NC}"
 fi
 
 # ==============================================================================
 #  STEP 3: Targeted Service Unloading (System & GUI)
+#  AirDrop daemons (sharingd and rapportd) are explicitly PRESERVED.
 # ==============================================================================
-echo -e "${YELLOW}${BOLD}[3/6] Unloading unnecessary Apple daemons, telemetry, and background agents...${NC}"
+echo -e "${YELLOW}[3/6] Unloading unnecessary Apple daemons, telemetry, and background agents...${NC}"
 
 # Disable Spotlight across all mount points
 mdutil -a -i off 2>/dev/null || true
@@ -187,13 +206,10 @@ GUI_SERVICES=(
     "com.apple.akd"
     "com.apple.amsaccountsd"
     "com.apple.amsengagementd"
-    # Sharing & Continuity
-    "com.apple.sharingd"
-    "com.apple.rapportd"
+    # Secondary Display & Peripheral Integration (AirDrop daemons sharingd/rapportd PRESERVED)
     "com.apple.sidecardisplayagent"
     "com.apple.sidecarrelay"
     "com.apple.universalcontrol"
-    "com.apple.continuity"
     "com.apple.AirPlayXPCHelper"
     # Apple Intelligence, Siri & Knowledge Agents
     "com.apple.intelligenceplatformd"
@@ -249,40 +265,38 @@ for g_svc in "${GUI_SERVICES[@]}"; do
     launchctl disable gui/"$CONSOLE_UID"/"$g_svc" 2>/dev/null || true
 done
 
-echo -e "    ${GREEN}✓ Unnecessary launchd jobs disabled.${NC}"
+echo -e "    ${GREEN}[OK] Unnecessary launchd jobs disabled (AirDrop preserved).${NC}"
 
 # ==============================================================================
 #  STEP 4: UI & Gatekeeper Configuration
 # ==============================================================================
-echo -e "${YELLOW}${BOLD}[4/6] Configuring UI responsiveness and security policy...${NC}"
+echo -e "${YELLOW}[4/6] Configuring UI responsiveness and security policy...${NC}"
 
-# Gatekeeper disabled (Traffic pre-filtered via secure VPN)
-spctl --master-disable 2>/dev/null || true
-sudo -u "$CONSOLE_USER" defaults write com.apple.LaunchServices LSQuarantine -bool false
+if [ "$DISABLE_GATEKEEPER" = true ]; then
+    spctl --master-disable 2>/dev/null || true
+    sudo -u "$CONSOLE_USER" defaults write com.apple.LaunchServices LSQuarantine -bool false
+    echo -e "    ${GREEN}[OK] Gatekeeper and binary quarantine disabled by user choice.${NC}"
+else
+    spctl --master-enable 2>/dev/null || true
+    sudo -u "$CONSOLE_USER" defaults write com.apple.LaunchServices LSQuarantine -bool true
+    echo -e "    ${GREEN}[OK] Gatekeeper kept enabled (system security policy preserved).${NC}"
+fi
 
-# UI Transparency PRESERVED (Native visual aesthetics intact)
-sudo -u "$CONSOLE_USER" defaults write com.apple.universalaccess reduceTransparency -bool false
-
-# Accelerated window resize & Dock animations for cursor responsiveness
-sudo -u "$CONSOLE_USER" defaults write NSGlobalDomain NSWindowResizeTime -float 0.08
-sudo -u "$CONSOLE_USER" defaults write com.apple.dock launchanim -bool false
-sudo -u "$CONSOLE_USER" defaults write com.apple.dock mineffect -string "scale"
-sudo -u "$CONSOLE_USER" defaults write com.apple.dock expose-animation-duration -float 0.12
-sudo -u "$CONSOLE_USER" defaults write com.apple.dock autohide-time-modifier -float 0.15
+# Only apply native reduceMotion; do NOT alter window/dock animation timings
+sudo -u "$CONSOLE_USER" defaults write com.apple.universalaccess reduceMotion -bool true
 
 # Suppress graphics logger overhead
 launchctl setenv MTL_HUD_ENABLED 0
 launchctl setenv MTL_COMPILER_LOG_LEVEL 0
 launchctl setenv DYLD_PRINT_WARNINGS 0
 
-echo -e "    ${GREEN}✓ UI settings applied (Transparency enabled, animations accelerated).${NC}"
+echo -e "    ${GREEN}[OK] Native reduceMotion applied. Animation timings untouched.${NC}"
 
 # ==============================================================================
 #  STEP 5: Balanced Power Management (Safe Sleep + Standby)
 # ==============================================================================
-echo -e "${YELLOW}${BOLD}[5/6] Configuring balanced power management (Safe Sleep)...${NC}"
+echo -e "${YELLOW}[5/6] Configuring balanced power management (Safe Sleep)...${NC}"
 
-# Unlock sleepimage if it was previously locked with uchg
 if [ -f /var/vm/sleepimage ]; then
     chflags nouchg /var/vm/sleepimage 2>/dev/null || true
 fi
@@ -300,12 +314,12 @@ pmset -a proximitywake 0
 pmset -a lidwake 1
 pmset -a tcpkeepalive 1
 
-echo -e "    ${GREEN}✓ Safe sleep (hibernatemode 3) and deep standby timers configured.${NC}"
+echo -e "    ${GREEN}[OK] Safe sleep (hibernatemode 3) and standby timers configured.${NC}"
 
 # ==============================================================================
 #  STEP 6: Verified Boot Injector & Conservative Renice CLI
 # ==============================================================================
-echo -e "${YELLOW}${BOLD}[6/6] Installing MacBoost Boot Injector and CLI (/usr/local/bin/macboost)...${NC}"
+echo -e "${YELLOW}[6/6] Installing MacBoost Boot Injector and CLI (/usr/local/bin/macboost)...${NC}"
 
 mkdir -p /usr/local/bin
 
@@ -321,7 +335,6 @@ LOG_FILE="/var/log/macboost_boot.log"
 
 echo "=== MacBoost Boot Execution: $(date) ===" > "$LOG_FILE"
 
-# Environment variables
 launchctl setenv MTL_HUD_ENABLED 0
 launchctl setenv MTL_COMPILER_LOG_LEVEL 0
 launchctl setenv DYLD_PRINT_WARNINGS 0
@@ -329,7 +342,6 @@ launchctl setenv DYLD_PRINT_WARNINGS 0
 # Allow OCLP patch kexts to settle before probing kernel
 sleep 4
 
-# Sysctl list for Ivy Bridge i5 (2C/4T) with 8GB RAM
 TUNABLES=(
     "kern.timer_coalesce_tier0_scale=1"
     "kern.timer_coalesce_tier0_ns_max=1000000"
@@ -371,19 +383,16 @@ TUNABLES=(
     "kern.sysv.shmall=262144"
 )
 
-# Apply each tunable with validation and individual logging
 for item in "${TUNABLES[@]}"; do
     [[ -z "$item" || "$item" == \#* ]] && continue
     key="${item%%=*}"
     target_val="${item#*=}"
 
-    # 1. Check if OID exists in current kernel build
     if ! /usr/sbin/sysctl "$key" >/dev/null 2>&1; then
         echo "[SKIP] $key (OID does not exist in this XNU build)" >> "$LOG_FILE"
         continue
     fi
 
-    # 2. Attempt write
     err_output=$(/usr/sbin/sysctl -w "$item" 2>&1)
     status=$?
 
@@ -394,7 +403,6 @@ for item in "${TUNABLES[@]}"; do
     fi
 done
 
-# Silence logd continuous disk writes
 /usr/bin/log config --mode "level:off" >/dev/null 2>&1
 killall -9 logd 2>/dev/null || true
 
@@ -405,7 +413,6 @@ BOOT_EOF
 chmod +x /usr/local/bin/macboost_boot.sh
 chown root:wheel /usr/local/bin/macboost_boot.sh
 
-# LaunchDaemon configuration (RunAtLoad=true, KeepAlive=false)
 cat << 'PLIST_EOF' > /Library/LaunchDaemons/com.legacy.macboost.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -433,13 +440,9 @@ PLIST_EOF
 chown root:wheel /Library/LaunchDaemons/com.legacy.macboost.plist
 chmod 644 /Library/LaunchDaemons/com.legacy.macboost.plist
 
-# Load LaunchDaemon
 launchctl bootout system/com.legacy.macboost 2>/dev/null || true
 launchctl bootstrap system /Library/LaunchDaemons/com.legacy.macboost.plist 2>/dev/null || launchctl load /Library/LaunchDaemons/com.legacy.macboost.plist 2>/dev/null || true
 
-# -----------------------------------------------------------------------------
-# Conservative Renice CLI: /usr/local/bin/macboost
-# -----------------------------------------------------------------------------
 cat << 'CLI_EOF' > /usr/local/bin/macboost
 #!/bin/bash
 # MacBoost Management CLI for MacBookPro10,2
@@ -457,25 +460,23 @@ function show_help() {
 }
 
 function run_boost() {
-    echo -e "\033[1;32m🚀 [MacBoost] Applying conservative scheduler priorities...\033[0m"
+    echo -e "\033[1;32m[*] [MacBoost] Applying conservative scheduler priorities...\033[0m"
 
-    # Tier 1 (-10): Latency-sensitive remote access and networking
     TARGETS_TIER1="Windows App|Microsoft Remote Desktop|AnyDesk|tailscaled|Tailscale|IPNExtension"
     PIDS_TIER1=$(pgrep -fi "$TARGETS_TIER1" || true)
     if [ -n "$PIDS_TIER1" ]; then
         renice -n -10 -p $PIDS_TIER1 >/dev/null 2>&1 || true
-        echo "  ✓ Remote Access & Mesh VPN (RDP/AnyDesk/Tailscale) set to nice -10"
+        echo "  [OK] Remote Access & Mesh VPN (RDP/AnyDesk/Tailscale) set to nice -10"
     fi
 
-    # Tier 2 (-5): Active interactive user applications
     TARGETS_TIER2="Google Chrome|Code|WhatsApp|Terminal|iTerm2|The Unarchiver"
     PIDS_TIER2=$(pgrep -fi "$TARGETS_TIER2" || true)
     if [ -n "$PIDS_TIER2" ]; then
         renice -n -5 -p $PIDS_TIER2 >/dev/null 2>&1 || true
-        echo "  ✓ Interactive Work Apps (Chrome/VS Code/WhatsApp/Terminal) set to nice -5"
+        echo "  [OK] Interactive Work Apps (Chrome/VS Code/WhatsApp/Terminal) set to nice -5"
     fi
 
-    echo -e "\033[1;32m✓ Completed. Scheduler priorities applied safely without saturating CPU threads.\033[0m"
+    echo -e "\033[1;32m[OK] Completed. Scheduler priorities applied safely without saturating CPU threads.\033[0m"
 }
 
 function run_status() {
@@ -499,7 +500,6 @@ function run_status() {
 
     echo ""
     echo -e "\033[1mTop CPU Processes:\033[0m"
-    # Filter out ps, head, and grep self-consumption from diagnostic output
     ps -arcwwwxo pid,command,%cpu,ni | grep -vE " (ps|head|grep)$" | head -n 6
 
     echo -e "\033[1;36m========================================================\033[0m"
@@ -542,21 +542,23 @@ ln -sf /usr/local/bin/macboost /usr/local/bin/optimizemac
 # Update root optimize.sh
 cp -f "$0" "$(dirname "$0")/optimize.sh" 2>/dev/null || true
 
-# Execute initial boot validation now to verify sysctls immediately
+# Execute initial boot validation now
 /usr/local/bin/macboost_boot.sh 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}${BOLD}=========================================================================="
-echo "    MACBOOST REFACTOR APPLIED SUCCESSFULLY!                               "
+echo "    MACBOOST OPTIMIZATION APPLIED SUCCESSFULLY                            "
 echo "==========================================================================${NC}"
 echo ""
-echo -e "${CYAN}Summary of Engineering Refinements:${NC}"
-echo -e " 1. ${BOLD}Sysctl Validation:${NC} Granular runtime validation with logging (/var/log/macboost_boot.log)."
-echo -e " 2. ${BOLD}Balanced Sleep:${NC} hibernatemode 3 (Safe Sleep) + standby timers (3h/6h) enabled."
-echo -e " 3. ${BOLD}IPC Isolation:${NC} Handoff and CoreDuet/duetexpertd disabled."
-echo -e " 4. ${BOLD}Clean Base:${NC} Unverified UID (16908544) and legacy thinclient remnants purged."
-echo -e " 5. ${BOLD}Conservative Renice:${NC} Work apps priority capped at -10/-5 to protect CPU threads."
+echo -e "${BLUE}Summary of Configuration:${NC}"
+echo -e " 1. Sysctl Validation: Granular runtime validation (/var/log/macboost_boot.log)."
+echo -e " 2. AirDrop Preserved: sharingd and rapportd remain active for local sharing."
+echo -e " 3. UI Policy: Native reduceMotion applied; window/Dock animation timings untouched."
+echo -e " 4. Gatekeeper: Configured according to user preference."
+echo -e " 5. Balanced Sleep: hibernatemode 3 (Safe Sleep) with standby timers (3h/6h)."
+echo -e " 6. Clean Daemon Policy: Spotlight, telemetry, Siri/AI, and cloud sync purged."
 echo ""
-echo -e "Check boot sysctl application results via: ${BOLD}macboost log${NC}"
-echo -e "Boost work apps and inspect diagnostics via: ${BOLD}macboost${NC}"
+echo -e "To view boot sysctl validation results: macboost log"
+echo -e "To boost apps and inspect status: macboost"
+echo -e "To uninstall and restore system defaults at any time: sudo ./uninstall.sh"
 echo ""

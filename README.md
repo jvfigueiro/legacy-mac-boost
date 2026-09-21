@@ -48,18 +48,16 @@ Executing this script selectively disables native macOS subsystems to conserve C
 * All indexing is disabled across all mounted volumes via `mdutil -a -i off` and `mdutil -a -d`.
 * **Consequence:** System-wide file searches in Finder, Spotlight search shortcuts, and metadata queries will not return file results. Files must be located manually or via command-line utilities (`find`, `fd`).
 
-### 3. Apple Cloud and Synchronization Services are Disabled
-* Launchd jobs for `com.apple.bird` (iCloud Drive), `com.apple.cloudd` (CloudKit), and related account synchronization daemons are booted out and disabled.
-* **Consequence:** iCloud Drive file synchronization, desktop/documents sync, iCloud Photos, and CloudKit-dependent application sync will cease to function.
-* **Important IPC Note:** If an Apple ID remains logged in under System Settings with iCloud Drive toggled on, client applications (such as file open/save dialogs in Finder) may continue attempting Mach message lookups, receiving `XPC_ERROR_CONNECTION_INVALID`. To achieve zero residual IPC calls, manually uncheck iCloud Drive in System Settings > Apple ID.
+### 3. App Store, Apple ID AuthKit, and AirDrop are 100% Preserved
+* **Preserved:** `akd` (AuthKit / 2FA login verification codes), `amsaccountsd` (App Store and app updates), `bird`/`cloudd`, and local peer-to-peer Wi-Fi sharing (`sharingd` and `rapportd`) remain fully active.
+* **Disabled:** Secondary integration services including Sidecar (`com.apple.sidecardisplayagent`, `com.apple.sidecarrelay`) are unloaded to prevent GPU and CPU wakeups on unsupported hardware.
 
-### 4. Continuity & Peripheral Integration vs. AirDrop Preservation
-* **AirDrop is PRESERVED:** Daemons responsible for local peer-to-peer Wi-Fi sharing (`sharingd` and `rapportd`) remain active and functional.
-* **Disabled Features:** Secondary integration services including Sidecar (`com.apple.sidecardisplayagent`, `com.apple.sidecarrelay`) and Universal Control (`com.apple.universalcontrol`) are unloaded to prevent GPU and CPU wakeups on unsupported hardware.
-
-### 5. Siri, Apple Intelligence, and Proactive Daemons are Disabled
+### 4. Siri, Apple Intelligence, and Proactive Daemons are Disabled
 * Daemons including `intelligenceplatformd`, `triald`, `suggestd`, `siriknowledged`, `duetexpertd`, `coreduetd`, and `contextstored` are unloaded.
 * **Consequence:** Siri voice input, proactive search suggestions, and background machine-learning context tracking are eliminated.
+
+### 5. Touch Bar Server is Disabled
+* `com.apple.touchbarserver` is disabled since the MacBookPro10,2 hardware does not possess a Touch Bar.
 
 ### 6. Telemetry and Diagnostics Reporting are Disabled
 * Diagnostic daemons including `analyticsd`, `symptomsd`, `spindump`, `tailspind`, and `ReportCrash` are unloaded.
@@ -82,9 +80,8 @@ Rather than piping all parameters blindly into `sysctl -f` (which silences failu
 * **hibernatemode 3 (Safe Sleep):** Preserves fast sub-second wake times from energized RAM while maintaining an image at `/var/vm/sleepimage` to protect against data loss if the battery discharges completely during extended trips.
 * **standby and autopoweroff:** Restored with sensible delays (3 hours on battery below 50%, 6 hours on healthy battery, 8 hours for autopoweroff) to allow the SMC to transition into deep low-power states during prolonged inactivity.
 
-### 3. Non-Invasive UI Policy
-* Native window blur and transparency remain enabled (`reduceTransparency -bool false`) to preserve visual aesthetics.
-* Window and Dock animation timings are left untouched; only the native accessibility `reduceMotion` toggle is applied (`defaults write com.apple.universalaccess reduceMotion -bool true`).
+### 3. Native UI Fidelity
+* Zero visual interface modifications. Native window blur, transparency, motion, and animation timings are 100% untouched and managed natively by macOS and user preferences in System Settings.
 
 ### 4. Conservative Mach Scheduler Priorities
 The `macboost` utility applies conservative nice values:

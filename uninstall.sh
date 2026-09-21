@@ -82,8 +82,8 @@ mdutil -a -i on 2>/dev/null || true
 echo -e "    ${GREEN}[OK] Spotlight indexing enabled.${NC}"
 
 # ==============================================================================
-#  STEP 4: Re-enable Core System and User Daemons
-#  Fully symmetric with all services unloaded in optimize.sh.
+#  STEP 4: Re-enable Targeted Core System and User Daemons
+#  Symmetric with services unloaded in optimize.sh.
 # ==============================================================================
 echo -e "${YELLOW}[4/5] Restoring launchd services (System & GUI)...${NC}"
 
@@ -122,14 +122,8 @@ RESTORE_SYSTEM_SERVICES=(
     "com.apple.triald.system"
     "com.apple.aned"
     "com.apple.aneuserd"
-    # Cloud & Peripheral Daemons
-    "com.apple.icloud.searchpartyd"
-    "com.apple.CSCSupportd"
+    # Peripherals
     "com.apple.nfcd"
-    "com.apple.oahd"
-    "com.apple.mdmclient.daemon.runatboot"
-    "com.apple.biometrickitd"
-    "com.apple.remotemanagementd"
 )
 
 RESTORE_GUI_SERVICES=(
@@ -141,20 +135,11 @@ RESTORE_GUI_SERVICES=(
     "com.apple.spotlightknowledged"
     "com.apple.spotlightknowledged.importer"
     "com.apple.spotlightknowledged.updater"
-    # Cloud & Sync Daemons
-    "com.apple.bird"
-    "com.apple.cloudd"
-    "com.apple.itunescloudd"
-    "com.apple.icloud.searchpartyuseragent"
-    "com.apple.wallpaper.clouddestination"
-    "com.apple.akd"
-    "com.apple.amsaccountsd"
-    "com.apple.amsengagementd"
-    # Secondary Display & Peripheral Integration
+    # Touch Bar Server
+    "com.apple.touchbarserver"
+    # Secondary Display
     "com.apple.sidecardisplayagent"
     "com.apple.sidecarrelay"
-    "com.apple.universalcontrol"
-    "com.apple.AirPlayXPCHelper"
     # Apple Intelligence, Siri & Knowledge Agents
     "com.apple.intelligenceplatformd"
     "com.apple.intelligencecontextd"
@@ -172,7 +157,6 @@ RESTORE_GUI_SERVICES=(
     # Media & Photo Background Analysis
     "com.apple.mediaanalysisd"
     "com.apple.photoanalysisd"
-    "com.apple.medialibraryd"
     # Telemetry, Biome & Crash Reporters
     "com.apple.analyticsagent"
     "com.apple.geoanalyticsd"
@@ -190,13 +174,6 @@ RESTORE_GUI_SERVICES=(
     "com.apple.appleseed.spindump"
     "com.apple.appleseed.seedusaged.postinstall"
     "com.apple.appleseed.biomesyncd"
-    # Miscellaneous services
-    "com.apple.gamed"
-    "com.apple.helpd"
-    "com.apple.touchbarserver"
-    "com.apple.screentimeagent"
-    "com.apple.widgets.extension-vending"
-    "com.apple.FolderActionsDispatcher"
 )
 
 for s_svc in "${RESTORE_SYSTEM_SERVICES[@]}"; do
@@ -207,14 +184,13 @@ for g_svc in "${RESTORE_GUI_SERVICES[@]}"; do
     launchctl enable gui/"$CONSOLE_UID"/"$g_svc" 2>/dev/null || true
 done
 
-echo -e "    ${GREEN}[OK] All services re-enabled in launchd configuration.${NC}"
+echo -e "    ${GREEN}[OK] Targeted services re-enabled in launchd configuration.${NC}"
 
 # ==============================================================================
 #  STEP 5: Restore Default Power Management Settings
 # ==============================================================================
 echo -e "${YELLOW}[5/5] Restoring default macOS power management configuration...${NC}"
 
-# Restore standard Apple powernap and tcpkeepalive defaults
 pmset -a hibernatemode 3
 pmset -a standby 1
 pmset -a autopoweroff 1
@@ -229,13 +205,7 @@ pmset -a proximitywake 1
 pmset -a networkoversleep 1 2>/dev/null || true
 pmset -a ttyskeepawake 1 2>/dev/null || true
 
-# Re-enable Handoff preferences
-sudo -u "$CONSOLE_USER" defaults -currentHost delete com.apple.coreservices.useractivityd ActivityAdvertisingAllowed 2>/dev/null || true
-sudo -u "$CONSOLE_USER" defaults -currentHost delete com.apple.coreservices.useractivityd ActivityReceivingAllowed 2>/dev/null || true
-sudo -u "$CONSOLE_USER" defaults delete com.apple.CloudDocs enabled 2>/dev/null || true
-sudo -u "$CONSOLE_USER" defaults write com.apple.universalaccess reduceMotion -bool false
-
-echo -e "    ${GREEN}[OK] Power management (Power Nap, TCP keepalive) and UI motion restored.${NC}"
+echo -e "    ${GREEN}[OK] Power management (Power Nap, TCP keepalive) restored.${NC}"
 
 echo ""
 echo -e "${GREEN}${BOLD}=========================================================================="

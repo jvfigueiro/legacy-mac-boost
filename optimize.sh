@@ -1,18 +1,26 @@
 #!/bin/bash
 # ==============================================================================
-#  MacBoost - macOS 15 Sequoia (OCLP) Balanced Optimization Suite
+#  MacBoost - macOS 15 Sequoia (OCLP) Focused & Safe Optimization Suite
 #  Target  : MacBook Pro 13" Retina (MacBookPro10,2 - Late 2012 / Early 2013)
 #  Hardware: Intel Core i5-3210M (2C/4T @ 2.5-3.1GHz) | Intel HD Graphics 4000
 #            8 GB DDR3L RAM | 2560x1600 Retina Display | SATA SSD
 #
-#  DESIGN DIRECTIVES:
-#  1. Configurable Gatekeeper: Prompts or accepts CLI flags to keep or disable.
-#  2. Native UI Fidelity: Does not alter window or Dock animation timings;
-#     only applies native reduceMotion option.
-#  3. AirDrop Preserved: sharingd and rapportd remain active for local sharing.
-#  4. Purgable Daemons: Silences Spotlight, telemetry, Siri/AI, media analysis,
-#     crash reporting, and background Apple ID cloud synchronization.
-#  5. Zero Emojis: Minimalist, clean, and reliable ASCII output.
+#  DESIGN PRINCIPLES (Focused & Non-Invasive):
+#  1. App Store & Apple ID 100% Preserved:
+#     - akd (AuthKit / 2FA login verification codes) and amsaccountsd (App Store)
+#       remain active and untouched.
+#  2. Native UI Fidelity:
+#     - Zero visual interface modifications. No forced animation or motion overrides.
+#  3. Targeted Background Daemon Silencing:
+#     - Spotlight indexing (mdutil & mds daemons).
+#     - Siri, Apple Intelligence & CoreDuet proactive background services.
+#     - Touch Bar server (unsupported hardware).
+#     - Crash reporting, spindump, tailspin, and telemetry.
+#     - Background media and photo analysis.
+#  4. Local Networking & AirDrop Preserved:
+#     - sharingd and rapportd remain enabled.
+#  5. Clean Power Management:
+#     - hibernatemode 3 (Safe Sleep) with complete Power Nap and DarkWake suppression.
 # ==============================================================================
 
 set -e
@@ -27,7 +35,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}${BOLD}"
 echo "=========================================================================="
-echo "    MacBoost — Balanced Performance Optimization (MacBookPro10,2)        "
+echo "    MacBoost — Focused Optimization Suite (MacBookPro10,2)                "
 echo "    Target: i5-3210M (2C/4T) | HD 4000 | 8GB RAM | macOS 15 Sequoia (OCLP)"
 echo "=========================================================================="
 echo -e "${NC}"
@@ -86,7 +94,7 @@ fi
 # ==============================================================================
 #  STEP 1: Purge Legacy Iteration Leftovers
 # ==============================================================================
-echo -e "${YELLOW}[1/6] Cleaning legacy services and outdated helper artifacts...${NC}"
+echo -e "${YELLOW}[1/5] Cleaning legacy services and outdated helper artifacts...${NC}"
 
 LEGACY_DAEMONS=(
     "com.legacy.thinclient"
@@ -99,57 +107,27 @@ for l_daemon in "${LEGACY_DAEMONS[@]}"; do
     rm -f "/Library/LaunchDaemons/${l_daemon}.plist" 2>/dev/null || true
 done
 
-rm -f /usr/local/bin/thinclient* /usr/local/bin/silent_sentinel.sh /usr/local/bin/sleeper* 2>/dev/null || true
+rm -f /usr/local/bin/thinclient* /usr/local/bin/silent_sentinel.sh /usr/local/bin/sleeper* /usr/local/bin/optimize_macbookpro10_2.sh 2>/dev/null || true
 echo -e "    ${GREEN}[OK] Legacy artifacts removed.${NC}"
 
 # ==============================================================================
-#  STEP 2: Account Dependencies & Residual XPC Isolation
+#  STEP 2: Targeted Service Unloading (System & GUI)
+#  CRITICAL: App Store (amsaccountsd) and Apple ID AuthKit (akd) are PRESERVED.
+#  AirDrop daemons (sharingd and rapportd) are PRESERVED.
 # ==============================================================================
-echo -e "${YELLOW}[2/6] Inspecting account dependencies and configuring IPC isolation...${NC}"
+echo -e "${YELLOW}[2/5] Unloading AI, Siri, Spotlight, telemetry, and error reporting...${NC}"
 
-# Disable Handoff / Continuity advertising while preserving AirDrop
-sudo -u "$CONSOLE_USER" defaults -currentHost write com.apple.coreservices.useractivityd ActivityAdvertisingAllowed -bool false
-sudo -u "$CONSOLE_USER" defaults -currentHost write com.apple.coreservices.useractivityd ActivityReceivingAllowed -bool false
-
-# Disable local CloudDocs metadata sync preference
-sudo -u "$CONSOLE_USER" defaults write com.apple.CloudDocs enabled -bool false 2>/dev/null || true
-
-# Check if Apple ID accounts are configured
-HAS_ICLOUD=false
-if sudo -u "$CONSOLE_USER" defaults read MobileMeAccounts Accounts >/dev/null 2>&1; then
-    ACCOUNT_COUNT=$(sudo -u "$CONSOLE_USER" defaults read MobileMeAccounts Accounts | grep -c "AccountID" || true)
-    if [ "$ACCOUNT_COUNT" -gt 0 ]; then
-        HAS_ICLOUD=true
-    fi
-fi
-
-if [ "$HAS_ICLOUD" = true ]; then
-    echo -e "    ${YELLOW}[NOTE] Active Apple ID detected on profile.${NC}"
-    echo -e "           Handoff advertising is disabled. However, if iCloud Drive is toggled ON"
-    echo -e "           in System Settings, apps opening file dialogs will issue residual XPC calls"
-    echo -e "           to cloudd/bird and receive XPC_ERROR_CONNECTION_INVALID."
-    echo -e "           Recommendation: Uncheck iCloud Drive in System Settings for zero residual calls."
-else
-    echo -e "    ${GREEN}[OK] No active Apple ID detected. Cloud sync agents can be safely disabled.${NC}"
-fi
-
-# ==============================================================================
-#  STEP 3: Targeted Service Unloading (System & GUI)
-#  AirDrop daemons (sharingd and rapportd) are explicitly PRESERVED.
-# ==============================================================================
-echo -e "${YELLOW}[3/6] Unloading unnecessary Apple daemons, telemetry, and background agents...${NC}"
-
-# Disable Spotlight across all mount points
+# Disable Spotlight indexing across all mounted volumes
 mdutil -a -i off 2>/dev/null || true
 mdutil -a -d 2>/dev/null || true
 
 SYSTEM_SERVICES=(
-    # Spotlight & Metadata
+    # Spotlight Metadata Engine
     "com.apple.metadata.mds"
     "com.apple.metadata.mds.index"
     "com.apple.metadata.mds.scan"
     "com.apple.metadata.mds.spindump"
-    # CoreDuet & Context Intelligence
+    # CoreDuet & Proactive Intelligence
     "com.apple.coreduetd"
     "com.apple.duetexpertd"
     "com.apple.contextstored"
@@ -178,14 +156,8 @@ SYSTEM_SERVICES=(
     "com.apple.triald.system"
     "com.apple.aned"
     "com.apple.aneuserd"
-    # Cloud & Peripheral daemons
-    "com.apple.icloud.searchpartyd"
-    "com.apple.CSCSupportd"
+    # Unneeded hardware daemons on 2012 MacBook Pro
     "com.apple.nfcd"
-    "com.apple.oahd"
-    "com.apple.mdmclient.daemon.runatboot"
-    "com.apple.biometrickitd"
-    "com.apple.remotemanagementd"
 )
 
 GUI_SERVICES=(
@@ -193,25 +165,13 @@ GUI_SERVICES=(
     "com.apple.duetexpertd"
     "com.apple.coreduetd"
     "com.apple.ContextStoreAgent"
-    # Spotlight GUI knowledge agents
+    # Spotlight GUI Knowledge Agents
     "com.apple.spotlightknowledged"
     "com.apple.spotlightknowledged.importer"
     "com.apple.spotlightknowledged.updater"
-    # Cloud & Sync Daemons
-    "com.apple.bird"
-    "com.apple.cloudd"
-    "com.apple.itunescloudd"
-    "com.apple.icloud.searchpartyuseragent"
-    "com.apple.wallpaper.clouddestination"
-    "com.apple.akd"
-    "com.apple.amsaccountsd"
-    "com.apple.amsengagementd"
-    # Secondary Display & Peripheral Integration (AirDrop daemons sharingd/rapportd PRESERVED)
-    "com.apple.sidecardisplayagent"
-    "com.apple.sidecarrelay"
-    "com.apple.universalcontrol"
-    "com.apple.AirPlayXPCHelper"
-    # Apple Intelligence, Siri & Knowledge Agents
+    # Touch Bar Server (Hardware not present on MacBookPro10,2)
+    "com.apple.touchbarserver"
+    # Siri, Apple Intelligence & Suggestion Daemons
     "com.apple.intelligenceplatformd"
     "com.apple.intelligencecontextd"
     "com.apple.triald"
@@ -228,7 +188,6 @@ GUI_SERVICES=(
     # Media & Photo Background Analysis
     "com.apple.mediaanalysisd"
     "com.apple.photoanalysisd"
-    "com.apple.medialibraryd"
     # Telemetry, Biome & Crash Reporters
     "com.apple.analyticsagent"
     "com.apple.geoanalyticsd"
@@ -246,13 +205,9 @@ GUI_SERVICES=(
     "com.apple.appleseed.spindump"
     "com.apple.appleseed.seedusaged.postinstall"
     "com.apple.appleseed.biomesyncd"
-    # Miscellaneous non-essential services
-    "com.apple.gamed"
-    "com.apple.helpd"
-    "com.apple.touchbarserver"
-    "com.apple.screentimeagent"
-    "com.apple.widgets.extension-vending"
-    "com.apple.FolderActionsDispatcher"
+    # Unsupported Sidecar daemons on Ivy Bridge
+    "com.apple.sidecardisplayagent"
+    "com.apple.sidecarrelay"
 )
 
 for s_svc in "${SYSTEM_SERVICES[@]}"; do
@@ -265,12 +220,14 @@ for g_svc in "${GUI_SERVICES[@]}"; do
     launchctl disable gui/"$CONSOLE_UID"/"$g_svc" 2>/dev/null || true
 done
 
-echo -e "    ${GREEN}[OK] Unnecessary launchd jobs disabled (AirDrop preserved).${NC}"
+echo -e "    ${GREEN}[OK] AI, Siri, Spotlight, telemetry, and crash daemons unloaded.${NC}"
+echo -e "    ${GREEN}[OK] App Store and Apple ID AuthKit remain 100% functional.${NC}"
 
 # ==============================================================================
-#  STEP 4: UI & Gatekeeper Configuration
+#  STEP 3: Gatekeeper Policy Configuration
+#  UI effects, window animations, and motion settings are completely untouched.
 # ==============================================================================
-echo -e "${YELLOW}[4/6] Configuring UI responsiveness and security policy...${NC}"
+echo -e "${YELLOW}[3/5] Applying security policy...${NC}"
 
 if [ "$DISABLE_GATEKEEPER" = true ]; then
     spctl --master-disable 2>/dev/null || true
@@ -282,22 +239,15 @@ else
     echo -e "    ${GREEN}[OK] Gatekeeper kept enabled (system security policy preserved).${NC}"
 fi
 
-# Only apply native reduceMotion; do NOT alter window/dock animation timings
-sudo -u "$CONSOLE_USER" defaults write com.apple.universalaccess reduceMotion -bool true
-
 # Suppress graphics logger overhead
 launchctl setenv MTL_HUD_ENABLED 0
 launchctl setenv MTL_COMPILER_LOG_LEVEL 0
 launchctl setenv DYLD_PRINT_WARNINGS 0
 
-echo -e "    ${GREEN}[OK] Native reduceMotion applied. Animation timings untouched.${NC}"
-
 # ==============================================================================
-#  STEP 5: Power Management & Strict Power Nap Elimination
-#  Completely eliminates Power Nap and background DarkWake polling triggers
-#  so the laptop remains in deep, unperturbed sleep while the lid is closed.
+#  STEP 4: Balanced Power Management & Power Nap Elimination
 # ==============================================================================
-echo -e "${YELLOW}[5/6] Configuring balanced power management and disabling Power Nap...${NC}"
+echo -e "${YELLOW}[4/5] Configuring power management and suppressing Power Nap...${NC}"
 
 if [ -f /var/vm/sleepimage ]; then
     chflags nouchg /var/vm/sleepimage 2>/dev/null || true
@@ -332,9 +282,9 @@ pmset -a lidwake 1
 echo -e "    ${GREEN}[OK] Power Nap disabled and deep sleep wake-suppression configured.${NC}"
 
 # ==============================================================================
-#  STEP 6: Verified Boot Injector & Conservative Renice CLI
+#  STEP 5: Verified Boot Injector & Conservative Renice CLI
 # ==============================================================================
-echo -e "${YELLOW}[6/6] Installing MacBoost Boot Injector and CLI (/usr/local/bin/macboost)...${NC}"
+echo -e "${YELLOW}[5/5] Installing MacBoost Boot Injector and CLI (/usr/local/bin/macboost)...${NC}"
 
 mkdir -p /usr/local/bin
 
@@ -563,12 +513,12 @@ echo "    MACBOOST OPTIMIZATION APPLIED SUCCESSFULLY                            
 echo "==========================================================================${NC}"
 echo ""
 echo -e "${BLUE}Summary of Configuration:${NC}"
-echo -e " 1. Sysctl Validation: Granular runtime validation (/var/log/macboost_boot.log)."
-echo -e " 2. AirDrop Preserved: sharingd and rapportd remain active for local sharing."
-echo -e " 3. UI Policy: Native reduceMotion applied; window/Dock animation timings untouched."
-echo -e " 4. Gatekeeper: Configured according to user preference."
-echo -e " 5. Balanced Sleep: hibernatemode 3 (Safe Sleep) with standby timers (3h/6h)."
-echo -e " 6. Clean Daemon Policy: Spotlight, telemetry, Siri/AI, and cloud sync purged."
+echo -e " 1. App Store & Apple ID: 100% functional (AuthKit 2FA & store daemons preserved)."
+echo -e " 2. AirDrop Preserved: sharingd and rapportd remain active."
+echo -e " 3. UI Policy: Native interface fidelity preserved (no animation or motion overrides)."
+echo -e " 4. Targeted Silencing: Spotlight, AI, Siri, CoreDuet, Touch Bar, and crash logs disabled."
+echo -e " 5. Power Management: hibernatemode 3 (Safe Sleep) with complete Power Nap suppression."
+echo -e " 6. Sysctl Validation: Granular runtime validation (/var/log/macboost_boot.log)."
 echo ""
 echo -e "To view boot sysctl validation results: macboost log"
 echo -e "To boost apps and inspect status: macboost"

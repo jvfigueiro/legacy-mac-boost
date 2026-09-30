@@ -1,4 +1,4 @@
-# Legacy Mac Boost: System Optimization Suite for MacBookPro10,2
+# Legacy Mac Boost: Optimization script for MacBookPro10,2
 
 Target Platform: macOS 15 Sequoia via OpenCore Legacy Patcher (OCLP)  
 Target Hardware: MacBook Pro 13" Retina (Late 2012 / Early 2013 - MacBookPro10,2)  
@@ -49,7 +49,7 @@ Legacy Mac Boost executes a focused, non-invasive optimization pipeline organize
 * **Functionality:** Local peer-to-peer Wi-Fi transfers, AirDrop discovery, and continuity handoff work out of the box.
 
 ### 3. Native UI Fidelity (Zero Visual Overrides)
-* **Untouched Aesthetics:** The suite applies **zero** forced modifications to native macOS window animations, dock motion, blur effects, or transparency.
+* **Untouched Aesthetics:** The script applies **zero** forced modifications to native macOS window animations, dock motion, blur effects, or transparency.
 * **User Control:** Users retain standard system appearance controls in macOS System Settings without script interference.
 
 ### 4. Targeted Background Daemon Silencing
@@ -92,7 +92,7 @@ A unified command-line tool is installed at `/usr/local/bin/macboost` (aliased t
 
 ## Installation, Usage, and Uninstallation
 
-### Running the Optimization Suite
+### Running the Optimization Script
 
 1. Make the script executable:
    ```bash

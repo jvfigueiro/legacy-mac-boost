@@ -46,18 +46,25 @@ echo ""
 echo -e "${YELLOW}[1/5] Removing MacBoost persistence daemons, binaries, and environment flags...${NC}"
 
 launchctl bootout system/com.legacy.macboost 2>/dev/null || true
+launchctl disable system/com.legacy.macboost 2>/dev/null || true
 rm -f /Library/LaunchDaemons/com.legacy.macboost.plist
 rm -f /usr/local/bin/macboost_boot.sh
 rm -f /usr/local/bin/macboost
 rm -f /usr/local/bin/optimizemac
+rm -f /usr/local/bin/optimize_macbookpro10_2.sh
 rm -f /var/log/macboost_boot.log
+
+# Clean up older iteration plists if still present
+rm -f /Library/LaunchDaemons/com.legacy.thinclient.plist 2>/dev/null || true
+rm -f /Library/LaunchDaemons/com.sleeper.sentinel.plist 2>/dev/null || true
+rm -f /Library/LaunchDaemons/com.jvfigueiro.optimize.plist 2>/dev/null || true
 
 # Unset launchd environment variables
 launchctl unsetenv MTL_HUD_ENABLED 2>/dev/null || true
 launchctl unsetenv MTL_COMPILER_LOG_LEVEL 2>/dev/null || true
 launchctl unsetenv DYLD_PRINT_WARNINGS 2>/dev/null || true
 
-# Restore default system logging
+# Restore default system logging level
 /usr/bin/log config --mode "level:default" 2>/dev/null || true
 
 echo -e "    ${GREEN}[OK] Daemons, CLI utilities, and environment flags reset.${NC}"
@@ -83,7 +90,7 @@ echo -e "    ${GREEN}[OK] Spotlight indexing enabled.${NC}"
 
 # ==============================================================================
 #  STEP 4: Re-enable Targeted Core System and User Daemons
-#  Symmetric with services unloaded in optimize.sh.
+#  Fully symmetric with all services unloaded in optimize.sh.
 # ==============================================================================
 echo -e "${YELLOW}[4/5] Restoring launchd services (System & GUI)...${NC}"
 
@@ -184,13 +191,14 @@ for g_svc in "${RESTORE_GUI_SERVICES[@]}"; do
     launchctl enable gui/"$CONSOLE_UID"/"$g_svc" 2>/dev/null || true
 done
 
-echo -e "    ${GREEN}[OK] Targeted services re-enabled in launchd configuration.${NC}"
+echo -e "    ${GREEN}[OK] All targeted services re-enabled in launchd configuration.${NC}"
 
 # ==============================================================================
 #  STEP 5: Restore Default Power Management Settings
 # ==============================================================================
 echo -e "${YELLOW}[5/5] Restoring default macOS power management configuration...${NC}"
 
+# Restore standard Apple power defaults
 pmset -a hibernatemode 3
 pmset -a standby 1
 pmset -a autopoweroff 1
@@ -205,13 +213,13 @@ pmset -a proximitywake 1
 pmset -a networkoversleep 1 2>/dev/null || true
 pmset -a ttyskeepawake 1 2>/dev/null || true
 
-echo -e "    ${GREEN}[OK] Power management (Power Nap, TCP keepalive) restored.${NC}"
+echo -e "    ${GREEN}[OK] Power management (Power Nap, TCP keepalive, standby) restored.${NC}"
 
 echo ""
 echo -e "${GREEN}${BOLD}=========================================================================="
 echo "    MACBOOST UNINSTALLATION COMPLETED                                     "
 echo "==========================================================================${NC}"
 echo ""
-echo "Please reboot your MacBook Pro to reload all default system services:"
+echo "Please reboot your MacBook Pro to restore default kernel tunables and reload services:"
 echo "sudo reboot"
 echo ""

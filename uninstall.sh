@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-#  MacBoost - Uninstallation and System Restoration Script
+#  Legacy Mac Boost - Uninstallation and System Restoration Script
 #  Target  : MacBook Pro 13" Retina (MacBookPro10,2 - Late 2012 / Early 2013)
 #  Platform: macOS 15 Sequoia via OpenCore Legacy Patcher (OCLP)
 # ==============================================================================
@@ -17,7 +17,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}${BOLD}"
 echo "=========================================================================="
-echo "    MacBoost — Uninstaller and System State Restoration                   "
+echo "    Legacy Mac Boost — Uninstaller and System State Restoration           "
 echo "=========================================================================="
 echo -e "${NC}"
 
@@ -217,7 +217,7 @@ echo -e "    ${GREEN}[OK] Power management (Power Nap, TCP keepalive, standby) r
 
 echo ""
 echo -e "${GREEN}${BOLD}=========================================================================="
-echo "    MACBOOST UNINSTALLATION COMPLETED                                     "
+echo "    LEGACY MAC BOOST UNINSTALLATION COMPLETED                             "
 echo "==========================================================================${NC}"
 echo ""
 echo "Please reboot your MacBook Pro to restore default kernel tunables and reload services:"

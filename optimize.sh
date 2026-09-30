@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-#  MacBoost - macOS 15 Sequoia (OCLP) Focused & Safe Optimization Suite
+#  Legacy Mac Boost - macOS 15 Sequoia (OCLP) Focused & Safe Optimization Suite
 #  Target  : MacBook Pro 13" Retina (MacBookPro10,2 - Late 2012 / Early 2013)
 #  Hardware: Intel Core i5-3210M (2C/4T @ 2.5-3.1GHz) | Intel HD Graphics 4000
 #            8 GB DDR3L RAM | 2560x1600 Retina Display | SATA SSD
@@ -35,7 +35,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}${BOLD}"
 echo "=========================================================================="
-echo "    MacBoost — Focused Optimization Suite (MacBookPro10,2)                "
+echo "    Legacy Mac Boost — Focused Optimization Suite (MacBookPro10,2)        "
 echo "    Target: i5-3210M (2C/4T) | HD 4000 | 8GB RAM | macOS 15 Sequoia (OCLP)"
 echo "=========================================================================="
 echo -e "${NC}"
@@ -509,7 +509,7 @@ ln -sf /usr/local/bin/macboost /usr/local/bin/optimizemac
 
 echo ""
 echo -e "${GREEN}${BOLD}=========================================================================="
-echo "    MACBOOST OPTIMIZATION APPLIED SUCCESSFULLY                            "
+echo "    LEGACY MAC BOOST OPTIMIZATION APPLIED SUCCESSFULLY                    "
 echo "==========================================================================${NC}"
 echo ""
 echo -e "${BLUE}Summary of Configuration:${NC}"

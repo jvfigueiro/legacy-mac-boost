@@ -1,4 +1,4 @@
-# MacBoost: System Optimization Suite for MacBookPro10,2
+# Legacy Mac Boost: System Optimization Suite for MacBookPro10,2
 
 Target Platform: macOS 15 Sequoia via OpenCore Legacy Patcher (OCLP)  
 Target Hardware: MacBook Pro 13" Retina (Late 2012 / Early 2013 - MacBookPro10,2)  
@@ -20,7 +20,7 @@ This project is directly inspired by and builds upon the research, testing, and 
 
 * Reference Resource: [TeckFire's Configuration & Scripts (Pastebin)](https://pastebin.com/UY2012cH)
 
-While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB of RAM, dedicated NVIDIA GPU, and active continuous background polling scripts, **MacBoost** refactors those concepts specifically for the 13" dual-core Core i5 model. Key architectural adaptations include:
+While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB of RAM, dedicated NVIDIA GPU, and active continuous background polling scripts, **Legacy Mac Boost** refactors those concepts specifically for the 13" dual-core Core i5 model. Key architectural adaptations include:
 * Eliminating continuous polling loops in favor of a zero-overhead one-shot boot injector.
 * Sizing network and virtual memory structures strictly for an 8 GB RAM constraint.
 * Implementing granular runtime sysctl validation with logging.
@@ -31,7 +31,7 @@ While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB
 
 ## Intended Operational Environment
 
-MacBoost is designed specifically for **controlled, secure networking environments**. It is tailored for machines functioning primarily as thin clients, remote administration workstations (RDP, SSH, AnyDesk), and light browsing terminals where all internet traffic is routed through a monitored, pre-filtered private VPN (such as Tailscale or an internal WireGuard/IPsec gateway).
+Legacy Mac Boost is designed specifically for **controlled, secure networking environments**. It is tailored for machines functioning primarily as thin clients, remote administration workstations (RDP, SSH, AnyDesk), and light browsing terminals where all internet traffic is routed through a monitored, pre-filtered private VPN (such as Tailscale or an internal WireGuard/IPsec gateway).
 
 ---
 
@@ -90,7 +90,7 @@ The `macboost` utility applies conservative nice values:
 * **Rationale:** On a 2-core / 4-thread processor, pushing multiple user applications to near-realtime priorities (-18 to -14) saturates Mach runqueues, leading to thread contention against the `WindowServer` compositor and input drivers (`hidd`). Restricting work apps to -10 and -5 ensures responsiveness without starving the display server.
 
 ### 5. Zero-Overhead Persistence (One-Shot Boot Injector)
-MacBoost does not run persistent background polling daemons. Its LaunchDaemon (`com.legacy.macboost.plist`) executes `/usr/local/bin/macboost_boot.sh` once at system boot (`RunAtLoad=true`, `KeepAlive=false`), applies the validated kernel parameters, silences verbose disk logging, and terminates immediately (`exit 0`). It consumes 0.00% CPU during daily operation.
+Legacy Mac Boost does not run persistent background polling daemons. Its LaunchDaemon (`com.legacy.macboost.plist`) executes `/usr/local/bin/macboost_boot.sh` once at system boot (`RunAtLoad=true`, `KeepAlive=false`), applies the validated kernel parameters, silences verbose disk logging, and terminates immediately (`exit 0`). It consumes 0.00% CPU during daily operation.
 
 ---
 
@@ -120,7 +120,7 @@ A unified command-line tool is installed at `/usr/local/bin/macboost` (aliased t
 
 ### Reverting Changes: `uninstall.sh`
 
-To completely remove MacBoost and restore standard macOS system settings:
+To completely remove Legacy Mac Boost and restore standard macOS system settings:
 
 1. Run the uninstaller as root:
    ```bash

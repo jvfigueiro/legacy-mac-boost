@@ -25,7 +25,8 @@ While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB
 * Sizing network and virtual memory structures strictly for an 8 GB RAM constraint.
 * Implementing granular runtime sysctl validation with logging.
 * Using conservative scheduler renice values (-10 / -5) to prevent thread starvation on a 2C/4T CPU.
-* Preserving AirDrop functionality while unloading heavy background cloud and AI tasks.
+* Preserving App Store, Apple ID 2FA verification, and AirDrop while disabling heavy background AI, telemetry, and indexing services.
+* Leaving native macOS user interface effects and animations untouched.
 
 ---
 
@@ -35,98 +36,122 @@ Legacy Mac Boost is designed specifically for **controlled, secure networking en
 
 ---
 
-## Explicit Operational Risks and Disabled Features
+## Core Design Principles & What the Suite Does
 
-Executing this script selectively disables native macOS subsystems to conserve CPU cycles and RAM. You must be aware of the following behaviors:
+Legacy Mac Boost executes a focused, non-invasive optimization pipeline organized into five clear phases:
 
-### 1. Gatekeeper Configuration (User Choice)
-* When executing `optimize.sh`, the script prompts whether to keep or disable Gatekeeper (`spctl` and `LSQuarantine`). You can also pass `--disable-gatekeeper` or `--keep-gatekeeper`.
-* **If disabled:** macOS bypasses quarantine attribute verification and online notarization checks, accelerating application launches in trusted VPN environments. Malicious binaries will run without OS-level Gatekeeper interception.
-* **If kept enabled:** Default macOS Gatekeeper and quarantine enforcement remain intact.
+### 1. App Store & Apple ID AuthKit 100% Preserved
+* **Preserved Services:** The Apple ID authentication daemon (`com.apple.akd`), App Store catalog and purchase engine (`com.apple.amsaccountsd`), and Apple Media Services engagement daemon (`com.apple.amsengagementd`) remain active and untouched.
+* **Why This Matters:** Disabling AuthKit breaks 2-Factor Authentication (2FA) verification codes, iCloud login validation, and native App Store updates. Legacy Mac Boost ensures you can seamlessly sign into Apple services and download or update apps without friction.
 
-### 2. Spotlight and Metadata Indexing are Permanently Disabled
-* All indexing is disabled across all mounted volumes via `mdutil -a -i off` and `mdutil -a -d`.
-* **Consequence:** System-wide file searches in Finder, Spotlight search shortcuts, and metadata queries will not return file results. Files must be located manually or via command-line utilities (`find`, `fd`).
+### 2. Local Networking & AirDrop Preserved
+* **Preserved Services:** `sharingd` and `rapportd` remain enabled.
+* **Functionality:** Local peer-to-peer Wi-Fi transfers, AirDrop discovery, and continuity handoff work out of the box.
 
-### 3. App Store, Apple ID AuthKit, and AirDrop are 100% Preserved
-* **Preserved:** `akd` (AuthKit / 2FA login verification codes), `amsaccountsd` (App Store and app updates), `bird`/`cloudd`, and local peer-to-peer Wi-Fi sharing (`sharingd` and `rapportd`) remain fully active.
-* **Disabled:** Secondary integration services including Sidecar (`com.apple.sidecardisplayagent`, `com.apple.sidecarrelay`) are unloaded to prevent GPU and CPU wakeups on unsupported hardware.
+### 3. Native UI Fidelity (Zero Visual Overrides)
+* **Untouched Aesthetics:** The suite applies **zero** forced modifications to native macOS window animations, dock motion, blur effects, or transparency.
+* **User Control:** Users retain standard system appearance controls in macOS System Settings without script interference.
 
-### 4. Siri, Apple Intelligence, and Proactive Daemons are Disabled
-* Daemons including `intelligenceplatformd`, `triald`, `suggestd`, `siriknowledged`, `duetexpertd`, `coreduetd`, and `contextstored` are unloaded.
-* **Consequence:** Siri voice input, proactive search suggestions, and background machine-learning context tracking are eliminated.
+### 4. Targeted Background Daemon Silencing
+The script unloads resource-heavy background processes that cause frequent CPU spikes on dual-core Ivy Bridge processors:
+* **Spotlight Indexing:** Indexing is disabled on all volumes via `mdutil -a -i off` and `mdutil -a -d`, alongside unloading `com.apple.metadata.mds*` and GUI knowledge agents (`com.apple.spotlightknowledged*`).
+* **Siri & Apple Intelligence:** Daemons such as `intelligenceplatformd`, `triald`, `suggestd`, `siriknowledged`, `siriinferenced`, `corespeechd`, `assistantd`, `duetexpertd`, `coreduetd`, and `contextstored` are unloaded.
+* **Touch Bar Server:** `com.apple.touchbarserver` is disabled (MacBookPro10,2 hardware does not possess a Touch Bar).
+* **Crash Reporting & Telemetry:** `analyticsd`, `symptomsd`, `spindump`, `tailspind`, `biomed`, `biomesyncd`, `powerlogHelperd`, and `ReportCrash` are disabled.
+* **Photo & Media Analysis:** `photoanalysisd` and `mediaanalysisd` background AI scanning daemons are unloaded.
+* **Unsupported Hardware Subsystems:** `aned`, `aneuserd`, `nfcd`, and Sidecar display daemons (`sidecardisplayagent`, `sidecarrelay`) are deactivated.
 
-### 5. Touch Bar Server is Disabled
-* `com.apple.touchbarserver` is disabled since the MacBookPro10,2 hardware does not possess a Touch Bar.
+### 5. Configurable Gatekeeper Security Policy
+* **Interactive Option:** On execution, `optimize.sh` presents a prompt to choose whether to disable Gatekeeper or keep it active.
+* **Non-Interactive Flags:**
+  * `--keep-gatekeeper`: Keeps Gatekeeper (`spctl --master-enable`) and `LSQuarantine` active.
+  * `--disable-gatekeeper`: Disables Gatekeeper (`spctl --master-disable`) and bypasses quarantine verification (`LSQuarantine=false`) for faster application launches in secure environments.
 
-### 6. Telemetry and Diagnostics Reporting are Disabled
-* Diagnostic daemons including `analyticsd`, `symptomsd`, `spindump`, `tailspind`, and `ReportCrash` are unloaded.
-* **Consequence:** Crash reports will not be generated or submitted to Apple.
+### 6. Power Management & Strict Power Nap Elimination
+* **Strict Power Nap & DarkWake Suppression:** Executes `pmset -a powernap 0`, `pmset -b powernap 0`, and `pmset -c powernap 0`, while purging all scheduled daemon wake alarms via `pmset schedule cancelall`.
+* **Battery TCP Keepalive Policy:** On battery power (`pmset -b tcpkeepalive 0`), the network stack ceases Bonjour Sleep Proxy periodic heartbeats and push notification timers that wake the CPU every 30 to 60 minutes with the lid closed. When connected to AC power, TCP keepalive is maintained (`pmset -c tcpkeepalive 1`).
+* **Safe Sleep (`hibernatemode 3`):** Keeps RAM energized during normal sleep for instant sub-second wake times, while retaining `/var/vm/sleepimage` to prevent data loss if the battery is fully depleted.
+* **Standby & Autopoweroff:** Standby delays are configured to 3 hours on low battery (`standbydelaylow 10800`), 6 hours on healthy battery (`standbydelayhigh 21600`), and 8 hours for autopoweroff (`autopoweroffdelay 28800`). Wake-on-LAN (`womp 0`) and proximity wake (`proximitywake 0`) are disabled.
 
----
+### 7. Zero-Overhead Persistence (One-Shot Boot Injector)
+* **Architecture:** Unlike tools that run continuous polling loops in the background, Legacy Mac Boost uses a one-shot LaunchDaemon (`/Library/LaunchDaemons/com.legacy.macboost.plist`) that triggers `/usr/local/bin/macboost_boot.sh` once at boot (`RunAtLoad=true`, `KeepAlive=false`) and exits (`exit 0`). It consumes 0.00% CPU during normal daily operation.
+* **Granular Sysctl Validation:** Probes the kernel Management Information Base (MIB) before writing each parameter, logging `[OK]`, `[SKIP]`, or `[FAIL]` to `/var/log/macboost_boot.log`.
+* **8 GB RAM Tunables:** Tunes virtual memory thresholds, vnodes (`kern.maxvnodes=262144`), open files (`kern.maxfiles=262144`), timer coalescing scale, and TCP buffer ceilings (8 MB).
+* **Logging Overhead Reduction:** Disables verbose system disk logging (`log config --mode "level:off"`), silencing write amplification on SATA SSDs.
 
-## Technical Architecture and Mechanisms
-
-### 1. Granular Runtime Sysctl Validation
-Rather than piping all parameters blindly into `sysctl -f` (which silences failures or halts on unrecognized keys), the boot injector iterates through each parameter:
-* Probes the kernel Management Information Base (MIB) via `/usr/sbin/sysctl "$key"`.
-* Logs `[SKIP]` if the OID is not supported by the running XNU build.
-* Attempts write via `/usr/sbin/sysctl -w "$item"` and captures stdout/stderr.
-* Records individual `[OK]` or `[FAIL]` status to `/var/log/macboost_boot.log`.
-
-### 2. Balanced Power Management & Strict Power Nap Elimination
-* **Strict Power Nap & DarkWake Elimination:** The script executes `pmset -a powernap 0`, `pmset -b powernap 0`, and `pmset -c powernap 0`, while purging all daemon-scheduled wake alarms via `pmset schedule cancelall`. Wake-on-LAN (`womp 0`) and proximity triggers (`proximitywake 0`) are disabled.
-* **Battery TCP Keepalive Policy:** On battery power (`pmset -b tcpkeepalive 0`), the network stack disables Bonjour Sleep Proxy periodic heartbeats and push-notification timers that traditionally wake the CPU every 30 to 60 minutes with the lid closed. When connected to AC power, keepalive is maintained (`pmset -c tcpkeepalive 1`).
-* **hibernatemode 3 (Safe Sleep):** Preserves fast sub-second wake times from energized RAM while maintaining an image at `/var/vm/sleepimage` to protect against data loss if the battery discharges completely during extended trips.
-* **standby and autopoweroff:** Restored with sensible delays (3 hours on battery below 50%, 6 hours on healthy battery, 8 hours for autopoweroff) to allow the SMC to transition into deep low-power states during prolonged inactivity.
-
-### 3. Native UI Fidelity
-* Zero visual interface modifications. Native window blur, transparency, motion, and animation timings are 100% untouched and managed natively by macOS and user preferences in System Settings.
-
-### 4. Conservative Mach Scheduler Priorities
-The `macboost` utility applies conservative nice values:
-* **Tier 1 (-10):** Windows App (RDP), AnyDesk, Tailscale. Prioritizes real-time remote frame rendering and network packet handling.
-* **Tier 2 (-5):** Google Chrome, VS Code, WhatsApp, Terminal. Elevates interactive applications above default processes (nice 0).
-* **Rationale:** On a 2-core / 4-thread processor, pushing multiple user applications to near-realtime priorities (-18 to -14) saturates Mach runqueues, leading to thread contention against the `WindowServer` compositor and input drivers (`hidd`). Restricting work apps to -10 and -5 ensures responsiveness without starving the display server.
-
-### 5. Zero-Overhead Persistence (One-Shot Boot Injector)
-Legacy Mac Boost does not run persistent background polling daemons. Its LaunchDaemon (`com.legacy.macboost.plist`) executes `/usr/local/bin/macboost_boot.sh` once at system boot (`RunAtLoad=true`, `KeepAlive=false`), applies the validated kernel parameters, silences verbose disk logging, and terminates immediately (`exit 0`). It consumes 0.00% CPU during daily operation.
+### 8. CLI Management Tool (`macboost` / `optimizemac`)
+A unified command-line tool is installed at `/usr/local/bin/macboost` (aliased to `/usr/local/bin/optimizemac`):
+* **`macboost`**: Applies scheduler nice priorities to running target applications and displays real-time diagnostics.
+* **`macboost boost`**: Re-applies conservative scheduler priorities on demand:
+  * **Tier 1 (`nice -10`):** Windows App (RDP), AnyDesk, Tailscale (prioritizes remote frame rendering and VPN packets).
+  * **Tier 2 (`nice -5`):** Google Chrome, VS Code, WhatsApp, Terminal, iTerm2 (elevates interactive user tools without starving `WindowServer` or `hidd` input drivers on a 2C/4T CPU).
+* **`macboost status`**: Displays system 1-minute load average, CPU thermal throttling state (`pmset -g therm`), direct free memory (`vm.page_free_count`), and top active CPU processes.
+* **`macboost log`**: Displays the exact sysctl validation boot log (`/var/log/macboost_boot.log`).
 
 ---
 
 ## Installation, Usage, and Uninstallation
 
-### Applying the Configuration
+### Running the Optimization Suite
 
-1. Grant execution permissions:
+1. Make the script executable:
    ```bash
    chmod +x optimize.sh
    ```
-2. Run the installer as root:
+
+2. Run the script as root:
    ```bash
    sudo ./optimize.sh
    ```
-   *(Optionally, use `sudo ./optimize.sh --disable-gatekeeper` or `sudo ./optimize.sh --keep-gatekeeper` to run non-interactively).*
-3. **Reboot the machine** to ensure all disabled services are cleared from memory and to allow the LaunchDaemon to perform initial boot-time kernel injection.
+   *Optional non-interactive flags:*
+   ```bash
+   sudo ./optimize.sh --keep-gatekeeper
+   # or
+   sudo ./optimize.sh --disable-gatekeeper
+   ```
 
-### CLI Management: `macboost`
+3. **Reboot your Mac** to flush lingering background services from memory and allow the one-shot boot daemon to apply validated kernel tunables:
+   ```bash
+   sudo reboot
+   ```
 
-A unified command-line tool is installed at `/usr/local/bin/macboost` (aliased to `optimizemac`):
+### Daily Usage via CLI
 
-* **`macboost`**: Applies scheduler priorities to running target applications and displays real-time system metrics.
-* **`macboost boost`**: Re-applies scheduler priorities (-10 / -5) on demand.
-* **`macboost status`**: Displays system 1-minute load average, CPU thermal throttling status, direct free memory, and top active processes.
-* **`macboost log`**: Displays the exact per-line sysctl validation log recorded by the boot injector (`/var/log/macboost_boot.log`).
+Check status or boost applications at any time:
+```bash
+# Apply app scheduling priorities and display system diagnostics:
+macboost
 
-### Reverting Changes: `uninstall.sh`
+# Re-apply app priorities only:
+macboost boost
 
-To completely remove Legacy Mac Boost and restore standard macOS system settings:
+# View real-time load average, thermal state, and top processes:
+macboost status
+
+# View boot-time kernel parameter injection log:
+macboost log
+```
+
+### Complete Uninstallation (`uninstall.sh`)
+
+Legacy Mac Boost provides a dedicated 1-to-1 symmetric uninstallation script that restores macOS to its default state:
 
 1. Run the uninstaller as root:
    ```bash
    sudo ./uninstall.sh
    ```
-2. **Reboot the machine** to reinitialize all restored daemons and power settings.
+
+2. What `uninstall.sh` does:
+   * Removes `/Library/LaunchDaemons/com.legacy.macboost.plist`, `/usr/local/bin/macboost_boot.sh`, `/usr/local/bin/macboost`, and `/var/log/macboost_boot.log`.
+   * Re-enables all 30 system services and 36 user services in `launchd`.
+   * Re-enables Spotlight indexing (`mdutil -a -i on`).
+   * Re-enables Gatekeeper (`spctl --master-enable`) and `LSQuarantine`.
+   * Restores default macOS power management configuration (`powernap 1`, `tcpkeepalive 1`, `womp 1`, `proximitywake 1`).
+
+3. **Reboot your Mac** to reload services and kernel defaults:
+   ```bash
+   sudo reboot
+   ```
 
 ---
 

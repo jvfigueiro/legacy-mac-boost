@@ -18,6 +18,7 @@ This software is provided "AS IS", without warranty of any kind. Modifying syste
 
 This project is directly inspired by and builds upon the research, testing, and methodology shared by Reddit user **TeckFire** for optimizing 2012 Retina MacBook Pros running modern macOS releases:
 
+* Reddit Discussion: [How I tuned my 2012 MacBook Pro Retina to have an incredible battery life and run like a beast on Sequoia 15.7.4 (r/OpenCoreLegacyPatcher)](https://www.reddit.com/r/OpenCoreLegacyPatcher/comments/1rbr95t/how_i_tuned_my_2012_macbook_pro_retina_to_have_an/)
 * Reference Resource: [TeckFire's Configuration & Scripts (Pastebin)](https://pastebin.com/UY2012cH)
 
 While TeckFire's original work targeted a 15" quad-core Core i7 model with 16 GB of RAM, dedicated NVIDIA GPU, and active continuous background polling scripts, **Legacy Mac Boost** refactors those concepts specifically for the 13" dual-core Core i5 model. Key architectural adaptations include:
